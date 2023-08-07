@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      lang="en"
+      xml:lang="en"
+>
+<head>
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes" />
+<title>CSCB09 2023 Summer Assignment 4</title>
+<style type="text/css">
+h1, h2, h3 { color: blue; }
+dfn { font-style: normal; font-weight: bold; color: blue; }
+table { border-collapse: collapse; }
+th, td { border: 1px solid grey; padding: 0.2em 0.5em; }
+
+/* Code excerpts from loadable source files. */
+div.excerpt {
+  margin: 1em 0em 1em; /* top, left/right, bottom */
+}
+div.excerpt > span {
+  font-size: smaller;
+  background-color: #f0f0f0;
+  padding: 0.25em;
+}
+div.excerpt > pre {
+  background-color: #f0f0f0;
+  overflow: auto;
+  padding: 0.5em;
+  margin: 0px;
+}
+
+/* popup hidable table of contents, and the button to pop it up. */
+#tocdyn {
+  position: fixed;
+  width: 15em;
+  top: 0;
+  right: 0;
+  padding: 8px;
+  border-left: blue solid 1px;
+  border-bottom: blue solid 1px;
+  background-color: white;
+  color: black;
+  font-family: sans-serif;
+  visibility: hidden; /* initial value, to be overruled by javascript */
+}
+#tocbutton {
+  position: fixed;
+  top: 0;
+  right: 0;
+  opacity: 0.9;
+}
+#tocdyn > h1 {
+  font-size: 1em;
+  font-weight: bold;
+  margin-top: 0;
+}
+#tocdyn * {
+  text-align: left;
+}
+#tocdyn ul {
+  list-style-type: none;
+}
+#tocdyn > ul {
+  padding-left: 0;
+}
+#tocdyn > ul ul {
+  padding-left: 1em;
+}
+#tocdyn li {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+ul.task-list{list-style: none;}
+</style>
+<script type="text/javascript">
+function show_toc() {
+  document.getElementById("tocdyn").style.visibility = "visible";
+}
+function hide_toc() {
+  document.getElementById("tocdyn").style.visibility = "";
+}
+</script>
+</head>
+<body id="top">
+<header class="title">
+<h1 class="title">CSCB09 2023 Summer Assignment 4</h1>
+</header>
+<div id="tocbutton"><button type="button" onclick="show_toc();">Table of Contents</button></div>
+<nav id="tocdyn" role="doc-toc" onclick="hide_toc();">
+<p><a href="#top">Top</a></p>
+<ul>
+<li><a href="#handmeup-file-submission-system">HandMeUp File Submission
+System</a></li>
+<li><a href="#client-4-marks">Client [4 marks]</a></li>
+<li><a href="#server-6-marks">Server [6 marks]</a>
+<ul>
+<li><a href="#serial-numbers-and-file-storage">Serial Numbers And File
+Storage</a></li>
+<li><a href="#helper-program">Helper Program</a></li>
+</ul></li>
+<li><a href="#file-size-vs-memory-size">File Size vs Memory
+Size</a></li>
+<li><a href="#bonus-question-0-marks">Bonus Question [0 marks]</a></li>
+<li><a href="#debugging-and-error-messages">Debugging And Error
+Messages</a></li>
+<li><a href="#good-citizen-policy">Good-Citizen Policy</a></li>
+<li><a href="#testing-tips">Testing Tips</a>
+<ul>
+<li><a href="#randomize-port-number">Randomize Port Number</a></li>
+<li><a href="#manual-testing-by-nc">Manual Testing by
+<code>nc</code></a></li>
+<li><a href="#mathlab-server-pc-client">Mathlab Server, PC
+Client</a></li>
+<li><a href="#pc-server-mathlab-client">PC Server, Mathlab
+Client</a></li>
+</ul></li>
+<li><a href="#sample-clients-and-servers">Sample Clients And
+Servers</a></li>
+<li><a href="#handing-in">Handing In</a></li>
+</ul>
+</nav>
+<div class="line-block">Due: August 9 Wednesday 11:59PM<br />
+This assignment is worth 10% of the course grade.</div>
+<p>This assignment is on network stream socket programming.</p>
+<p>As usual, you should aim for reasonably efficient algorithms and
+reasonably organized, comprehensible code.</p>
+<p>Correctness (mostly auto-testing) is worth 90% of the marks; code
+quality is worth 10%.</p>
+<h2 id="handmeup-file-submission-system">HandMeUp File Submission
+System</h2>
+<p>The protocol in this assignment is a stripped down toy example of
+submitting files to a central server. In short, a client sends a user
+name (we omit authentication tokens WLOG), a file name, the file size,
+and the file content. The server stores the file and sends a serial
+number.</p>
+<p>Since stream sockets are used, there is no “packet boundary”. We use
+newlines for delimiters. (In the real world, most protocols use CR-LF.
+None uses NUL. (Some protocols actually have NUL as actual data, not end
+of strings.))</p>
+<p>Here is the detailed protocol sequence (IF neither clients nor
+servers malfunction):</p>
+<ol type="1">
+<li><p>The client connects to the server.</p></li>
+<li><p>The client sends:</p>
+<ol type="a">
+<li>user name (1 to 8 letters or digits), newline</li>
+<li>file name (1 to 100 bytes, should not contain <code>'/'</code> or
+newline), newline</li>
+<li>file size (1 to 10 digits), newline</li>
+<li>file content</li>
+</ol>
+<p>Again, there is no guarantee that the above comes as one chunk, or
+four chunks nicely aligned with the four items, or one chunk for the
+first three then one chunk for the file content, or whatever. Splitting
+at any point is possible. You only have newlines and the promised file
+size to rely on.</p></li>
+<li><p>The server checks that the user name, the file name, and the file
+size satisfy the constraints stated above.</p>
+<p>If not, the server sends <code>HDERR</code>, newline; then the server
+disconnects. (“HD” stands for “header”.)</p></li>
+<li><p>The server receives the number of bytes as promised by the
+client. (File storage is specified in a later section.)</p></li>
+<li><p>The server sends a serial number (1 to 10 digits), newline.
+(Serial numbers are specified in a later section.)</p>
+<p>Again, no guarantee that even these 11 bytes are not split.</p></li>
+<li><p>Both sides disconnect.</p></li>
+</ol>
+<h2 id="client-4-marks">Client [4 marks]</h2>
+<p>Implement a client program hmu-client.c. The 4 command line arguments
+are: server address in dot notation, server port number, user name, file
+name. (When marking, they will be valid, and the file will be a readable
+regular file with size below <span
+class="math inline">2<sup>32</sup></span>.) The client program is
+responsible for determining the file size.</p>
+<p>If opening the file for reading fails, or the IP address or the port
+number is invalid, or connection is unsuccessful, you may print an error
+message of your choice to stderr, and exit with a non-zero exit
+code.</p>
+<p>If connection is successful, follow the protocol. At the end, print
+the received serial number to stdout before exiting (with exit code
+0).</p>
+<p>Server malfunctions happen all the time due to bugs and service
+disruptions. Here are the scenerios you must handle as prescribed:</p>
+<ul>
+<li><p>Error when sending data, or error or EOF when trying to receive
+the serial number: Server disruption. Exit with a non-zero exit code or
+get terminated by SIGPIPE; you may print error messages to
+stderr.</p></li>
+<li><p>When expecting a serial number: receiving non-digits, or more
+than 10 bytes, or no newline after: Server bug. Do not treat it as a
+valid serial number. Exit with a non-zero exit code; you may print error
+messages to stderr.</p></li>
+<li><p>Extra bytes after the serial number and the newline: Just
+ignore.</p></li>
+</ul>
+<p>Marking will test your client against a correct server and some
+malicious servers.</p>
+<h2 id="server-6-marks">Server [6 marks]</h2>
+<p>Implement a server program hmu-server.c. The 2 command line
+arguments: port number to bind to, pathname of a helper program
+(explained in a later section). (When marking, they will be valid.)</p>
+<p>The server should bind to the given port at address
+<code>INADDR_ANY</code>. We do expect this to fail all the time due to
+the “address already in use” error. If this happens, print an error
+message to stderr and exit with a non-zero exit code.</p>
+<p>A server should be responsive to multiple existing and incoming
+clients concurrently, even when a bad client stalls and wants the server
+to wait forever; bad clients happen all the time by bad luck, bugs, or
+malice. Well-known approaches are: forking a child process for each
+client, so the parent is just an accept-fork loop; or multiplexing by
+<code>select()</code> or <code>epoll()</code>; or multi-threading. You
+may choose which approach you want. (Forking is the easiest. Here is an
+indirect test on how well you can integrate multiple topics from this
+course and realize that the child process can handle split data with
+almost no code of your own. If you fail that test, you don’t necessarily
+lose marks (in this course anyway), you just lose hair and time
+re-inventing the wheel, which translates to losing marks in other
+courses and/or general misery.)</p>
+<p>Busy polling is disallowed. Marking will be done under a tight limit
+on CPU time.</p>
+<p>If you use forking: Zombie processes should not happen. And yet, the
+parent process should not hang indefinitely to wait for a child to
+terminate, since it must also stay responsive to new connection
+requests. (Here is an indirect test on how well you paid attention to
+lectures and realize that there is a dead simple one-liner solution. If
+you fail that test… you get my point.)</p>
+<p>The server should not terminate until SIGTERM or SIGINT. Upon those
+signals, it should be terminated by the signal (least work, default
+action) or exit with exit code 0. (If you use forking, obviously this is
+required of the parent process only.)</p>
+<p>Client malfunctions happen all the time, even more than server
+malfunctions. The Internet is full of fools, trolls, and foolish trolls.
+Here are the scenerios you should handle as prescribed:</p>
+<ul>
+<li><p>Header errors: As covered in the protocol description.</p></li>
+<li><p>Premature EOF when receiving header or file content: The client
+is gone. Just disconnect. (Do not send a serial number.)</p></li>
+<li><p>Longer file content than the client promised: Ignore the extra
+bytes. (Proceed to sending the serial number.)</p></li>
+</ul>
+<p>Marking will test your server against correct clients and some
+malicious clients.</p>
+<h3 id="serial-numbers-and-file-storage">Serial Numbers And File
+Storage</h3>
+<p>The server maintains a serial number. It starts from 0 when the
+server starts, and increases by 1 (post-increment) for every successful
+<code>accept()</code>. To be concrete, the first client connection gets
+0 for serial number.</p>
+<p>The serial number is for both saving the received file and sending to
+the client at the end.</p>
+<p>The received file should be saved in the current working directory
+under the name <var>user</var>-<var>serial</var>-<var>filename</var>.
+Example: If the user name is trebla, the client-supplied filename is
+foo.c, and the serial number is 4, then save to trebla-4-foo.c. We
+assume no errors writing the file.</p>
+<p>If fewer bytes than the client promised are received, delete the
+saved file.</p>
+<h3 id="helper-program">Helper Program</h3>
+<p>If you choose forking, you can also choose to have the child
+<code>exec()</code> a different program dedicated to handling a client.
+This can lead to tidy code and safeguard against common mistakes, e.g.,
+accidentally running parent code and calling <code>accept()</code> and
+even <code>fork()</code> therefore potential fork-bomb.</p>
+<p>If you choose to do this, put the code in hmu-helper.c. You create
+your own convention for how it knows the socket FD, the filename, the
+serial number, etc. (e.g., make your own command line arguments).</p>
+<p>Marking may compile it to any filename under any directory, so please
+do not hardcode the filename in the <code>exec()</code> call. Instead,
+please use the 2nd command line argument of the server program. Marking
+will provide the right pathname.</p>
+<p>If <code>exec()</code> fails (meaning typo in the pathname), please
+call <code>exit()</code> with a non-zero exit code. This safeguards
+against accidentally running parent code and calling <code>fork()</code>
+and… you get the point.</p>
+<p>If you choose not to use a helper program (or you cannot because you
+prefer <code>select()</code>), please hand in the unchanged starter file
+for hmu-helper.c, just to make sure it still compiles when marking. Then
+your server code can ignore the 2nd argument.</p>
+<h2 id="file-size-vs-memory-size">File Size vs Memory Size</h2>
+<p>Do not assume that you have enough memory for the whole file. This
+applies to both clients and servers. This will be tested.</p>
+<p>On the bright side, we assume that reading and writing regular files
+do not block.</p>
+<h2 id="bonus-question-0-marks">Bonus Question [0 marks]</h2>
+<p>I have specified incrementing the serial number per client
+connection, meaning even if no valid file is received (e.g., header
+error, too few bytes of file content).</p>
+<p>What if I required instead: increment per valid file after receiving
+it?</p>
+<p>Why is it trivial if you use <code>select/epoll()</code> or
+multi-threading?</p>
+<p>Why is it hard if you use <code>fork()</code> without introducing a
+race condition? How could it be done?</p>
+<p>(Don’t worry, <code>select/epoll()</code> makes something else hard,
+and multi-threading is hard to learn. The glass of water is always half
+empty, the other pasture is always greener, and every silver lining has
+tarnish.)</p>
+<h2 id="debugging-and-error-messages">Debugging And Error Messages</h2>
+<p>If you like to print debugging or error messages for your own sake,
+please send them to stderr only.</p>
+<h2 id="good-citizen-policy">Good-Citizen Policy</h2>
+<p>Marks can be deducted from this assignment if, on the Mathlab server
+or BV lab PCs, you have left-over processes that have been consuming
+more than 24 hours of CPU time (the TIME field in ps, top, and
+htop).</p>
+<h2 id="testing-tips">Testing Tips</h2>
+<h3 id="randomize-port-number">Randomize Port Number</h3>
+<p>When you run a server on Mathlab, since everyone is doing the same,
+you should randomly choose a port number between 1024 and 65535 based on
+((student number × 331) mod 64439) + 1024. If that still gives “address
+in use”, add 1 and repeat.</p>
+<h3 id="manual-testing-by-nc">Manual Testing by <code>nc</code></h3>
+<p>The <code>nc</code> program can let you manually act as one side to
+hand-test the other side. You enter to stdin what to send; you see
+received data on stdout. Quickstart:</p>
+<ul>
+<li><p>To act as a client:
+<code>nc [-v] [-q 1] DOTADDRESS PORT</code></p></li>
+<li><p>To act as a server:
+<code>nc [-v] [-q 1] -n -l [DOTADDRESS] PORT</code>. Note that this
+calls <code>accept()</code> only once, at the beginning. It only serves
+one client, then quits.</p></li>
+</ul>
+<h3 id="mathlab-server-pc-client">Mathlab Server, PC Client</h3>
+<p>Mathlab is behind a firewall. A firewall blocks most ports for
+safety, including ports we need for testing this assignment. ssh can
+help solve this problem.</p>
+<p>If you have a server running on Mathlab at port sssss, e.g.:</p>
+<pre><code>mathlab$ /path/to/server sssss /path/to/helper</code></pre>
+<p>Then “ssh local forwarding” allows connecting from your PC. Pick a
+random port number xxxxx (criterion: available on your PC). Then the ssh
+command goes like:</p>
+<pre><code>my-pc$ ssh -L xxxxx:127.0.0.1:sssss utorid@mathlab.utsc.utoronto.ca</code></pre>
+<p>Tell your client on your PC that the server address and port are:</p>
+<pre><code>my-pc$ /path/to/client 127.0.0.1 xxxxx user file</code></pre>
+<h3 id="pc-server-mathlab-client">PC Server, Mathlab Client</h3>
+<p>Your home router has a firewall; Windows adds an extra one. A
+firewall blocks most ports for safety, including ports we need for
+testing this assignment. ssh can help solve this problem.</p>
+<p>If you have a server running on your PC at port sssss, e.g.:</p>
+<pre><code>my-pc$ /path/to/server sssss /path/to/helper</code></pre>
+<p>Then “ssh remote forwarding” allows you to connect from Mathlab. Pick
+a random port number xxxxx (criterion: available on Mathlab). Then the
+ssh command goes like:</p>
+<pre><code>my-pc$ ssh -R xxxxx:127.0.0.1:sssss utorid@mathlab.utsc.utoronto.ca</code></pre>
+<p>Tell your client on Mathlab that the server address and port are:</p>
+<pre><code>mathlab$ /path/to/client 127.0.0.1 xxxxx user file</code></pre>
+<h2 id="sample-clients-and-servers">Sample Clients And Servers</h2>
+<p>I will have sample clients and servers (exe only, clearly) available
+on Mathlab next week.</p>
+<h2 id="handing-in">Handing In</h2>
+<p>Please hand in hmu-client.c, hmu-server.c, hmu-helper.c.</p>
+</body>
+</html>
