@@ -15,15 +15,50 @@
 int main(int argc, char *argv[]) {
   // TODO
 
+  // check for invalid number of arguments provided
+  if (argc < 5)
+  {
+    fprintf(stderr, "4 arguments required\n");
+    exit(1);
+  }
+  
+  // parse and assign arguements
   char *address = argv[1];
-  int port = atoi(argv[2]);
+  short int port = atoi(argv[2]);
   char *username = argv[3];
   char *filename = argv[4];
 
-  printf("%s\n", address);
-  printf("%d\n", port);
-  printf("%s\n", username);
-  printf("%s\n", filename);
+  struct sockaddr_in addy;
+
+  memset(&addy, 0, sizeof(struct sockaddr_in));
+  addy.sin_family = AF_INET;
+  addy.sin_port = htons(port);
+  if (inet_pton(AF_INET, address, &addy.sin_addr) == 0) 
+  {
+    fprintf(stderr, "not an IPv4 address.\n");
+    exit(2);
+  }
+
+  int cfd = socket(AF_INET, SOCK_STREAM, 0);
+
+  if (cfd == -1) 
+  {
+    fprintf(stderr, "failed to create socket\n");
+    exit(3);
+  }
+
+  if (connect(cfd, (struct sockaddr *)&addy, sizeof(struct sockaddr_in)) == -1)
+  {
+    fprintf(stderr, "failed to connect to server\n");
+  }
+
+  int file = open(filename, O_RDWR | O_CREAT);
+
+  fseek(file, 0, SEE_END);
+  int size = ftell(file);
+  fseek(file, 0, SEE_SET);
+
+  write(cfd, username, strlen(username));
 
   return 0;
 }
