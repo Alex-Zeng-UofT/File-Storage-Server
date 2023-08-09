@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     exit(2);
   }
 
+  
   int cfd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (cfd == -1) 
@@ -52,13 +53,19 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "failed to connect to server\n");
   }
 
-  int file = open(filename, O_RDWR | O_CREAT);
+  FILE *file = fopen(filename, "w+");
 
-  fseek(file, 0, SEE_END);
+  fseek(file, 0, SEEK_END);
   int size = ftell(file);
-  fseek(file, 0, SEE_SET);
+  fseek(file, 0, SEEK_SET);
+
+  fclose(file);
 
   write(cfd, username, strlen(username));
+  write(cfd, filename, strlen(filename));
+  write(cfd, &size, sizeof(int));
+
+
 
   return 0;
 }
