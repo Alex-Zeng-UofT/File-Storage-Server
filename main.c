@@ -41,31 +41,32 @@ int main() {
 
     printf("Server listening on port 44015...\n");
 
+    int serial = 0;
+
     while (1) {
         // Accept incoming connection
         client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
         if (client_socket == -1) {
             perror("Error accepting connection");
             continue;
+        } else {
+            serial++;
         }
+
+        char s[100] = "SerialNumber";
+
+        FILE *file = fopen(s, "a+");
+
+        char buffer;
 
         printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
         while (1) {
-            ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
-            if (bytes_received <= 0) {
-                break; // Client disconnected or error occurred
-            }
-
-            buffer[bytes_received] = '\0';
-            printf("Received: %s\n", buffer);
-
-            // Process received data here...
-
-            // Respond to the client
-            const char *response = "Received your message!";
-            send(client_socket, response, strlen(response), 0);
+            if (read(client_socket, &buffer, 1) < 0) break;
+            printf("%c", buffer);
+            fprintf(file, "%s\n", &buffer);
         }
+        fclose(file);
 
         printf("Client disconnected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
         close(client_socket);

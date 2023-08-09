@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+
 // cmdline reminder: IP-address, portnum, username, filename
 int main(int argc, char *argv[]) {
   // TODO
@@ -25,8 +26,16 @@ int main(int argc, char *argv[]) {
   // parse and assign arguements
   char *address = argv[1];
   short int port = atoi(argv[2]);
-  char *username = argv[3];
+
+  char *username;
+  strcpy(username, argv[3]);
+  strcat(username, ",\n");
+
+  FILE *file = fopen(argv[4], "r+");
+
   char *filename = argv[4];
+  strcpy(filename, argv[4]);
+  strcat(filename, ",\n");
 
   struct sockaddr_in addy;
 
@@ -53,31 +62,29 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "failed to connect to server\n");
   }
 
-  FILE *file = fopen(filename, "r+");
-
   fseek(file, 0, SEEK_END);
   int size = ftell(file);
   fseek(file, 0, SEEK_SET);
 
-  char sizeStr[10];
+  char sizeStr[20];
 
   sprintf(sizeStr, "%d", size);
+  strcat(sizeStr, ",\n");
 
 
   write(cfd, username, strlen(username));
   write(cfd, filename, strlen(filename));
   write(cfd, sizeStr, strlen(sizeStr));
 
-  char content[size];
+  char content;
+
   int i = 0;
   while (i < size) {
-    if (fread((content + i), 1, 1, file) == -1)
+    if (fread(&content, 1, 1, file) == -1 || write(cfd, &content, 1) == -1)
       break;
     i++;
   }
   
-
-  write(cfd, content, size);
 
   fclose(file);
 
