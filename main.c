@@ -19,11 +19,12 @@ int main() {
 
     // Configure server address
     server_addr.sin_family = AF_INET;
-    if (inet_pton(AF_INET, "142.1.96.164", &server_addr.sin_addr) == 0) 
-    {
-        fprintf(stderr, "not an IPv4 address.\n");
-        exit(2);
-    }
+    // if (inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr) == 0) 
+    // {
+    //     fprintf(stderr, "not an IPv4 address.\n");
+    //     exit(2);
+    // }
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     server_addr.sin_port = htons(44015);  // Port to listen on
 
     // Bind the socket to the address and port
@@ -38,7 +39,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("Server listening on port 8080...\n");
+    printf("Server listening on port 44015...\n");
 
     while (1) {
         // Accept incoming connection

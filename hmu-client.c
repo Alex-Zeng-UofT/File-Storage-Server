@@ -53,19 +53,33 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "failed to connect to server\n");
   }
 
-  FILE *file = fopen(filename, "w+");
+  FILE *file = fopen(filename, "r+");
 
   fseek(file, 0, SEEK_END);
   int size = ftell(file);
   fseek(file, 0, SEEK_SET);
 
-  fclose(file);
+  char sizeStr[10];
+
+  sprintf(sizeStr, "%d", size);
+
 
   write(cfd, username, strlen(username));
   write(cfd, filename, strlen(filename));
-  write(cfd, &size, sizeof(int));
+  write(cfd, sizeStr, strlen(sizeStr));
 
+  char content[size];
+  int i = 0;
+  while (i < size) {
+    if (fread((content + i), 1, 1, file) == -1)
+      break;
+    i++;
+  }
+  
 
+  write(cfd, content, size);
+
+  fclose(file);
 
   return 0;
 }
