@@ -84,5 +84,11 @@ int main(int argc, char *argv[]) {
 
   fclose(file);
 
+  char message[11];
+
+  read(cfd, message, 11);
+
+  printf("%s", message);
+
   return 0;
 }
