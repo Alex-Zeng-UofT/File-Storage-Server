@@ -27,16 +27,9 @@ int main(int argc, char *argv[]) {
   char *address = argv[1];
   short int port = atoi(argv[2]);
 
-  char *username;
-  strcpy(username, argv[3]);
-  strcat(username, ",\n");
-
   FILE *file = fopen(argv[4], "r+");
 
-  char *filename = argv[4];
-  strcpy(filename, argv[4]);
-  strcat(filename, ",\n");
-
+  // prepare for connection
   struct sockaddr_in addy;
 
   memset(&addy, 0, sizeof(struct sockaddr_in));
@@ -47,8 +40,8 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "not an IPv4 address.\n");
     exit(2);
   }
-
-  
+ 
+  // create client socket
   int cfd = socket(AF_INET, SOCK_STREAM, 0);
 
   if (cfd == -1) 
@@ -57,34 +50,37 @@ int main(int argc, char *argv[]) {
     exit(3);
   }
 
+  // attempt to connect
   if (connect(cfd, (struct sockaddr *)&addy, sizeof(struct sockaddr_in)) == -1)
   {
     fprintf(stderr, "failed to connect to server\n");
   }
-
+  
+  // get size of the file
   fseek(file, 0, SEEK_END);
   int size = ftell(file);
   fseek(file, 0, SEEK_SET);
-
+  
   char sizeStr[20];
 
   sprintf(sizeStr, "%d", size);
-  strcat(sizeStr, ",\n");
+  strcat(sizeStr, "\n");
 
-
-  write(cfd, username, strlen(username));
-  write(cfd, filename, strlen(filename));
+  // write username, filename, and file size
+  write(cfd, argv[3], strlen(argv[3]));
+  write(cfd, "\n", 1);
+  write(cfd, argv[4], strlen(argv[4]));
+  write(cfd, "\n", 1);
   write(cfd, sizeStr, strlen(sizeStr));
 
+  // buffer for individual content
   char content;
 
-  int i = 0;
-  while (i < size) {
+  // content into server 1 byte at a time
+  for (int i = 0; i < size; i++) {
     if (fread(&content, 1, 1, file) == -1 || write(cfd, &content, 1) == -1)
       break;
-    i++;
   }
-  
 
   fclose(file);
 

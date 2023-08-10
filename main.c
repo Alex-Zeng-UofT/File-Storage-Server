@@ -10,6 +10,10 @@ int main() {
     socklen_t client_addr_len = sizeof(client_addr);
     char buffer[1024];
 
+    char username[9];
+    char filename[101];
+    char length[11];
+
     // Create a socket
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -53,19 +57,78 @@ int main() {
             serial++;
         }
 
-        char s[100] = "SerialNumber";
-
-        FILE *file = fopen(s, "a+");
-
         char buffer;
 
-        printf("Client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-        while (1) {
-            if (read(client_socket, &buffer, 1) < 0) break;
-            printf("%c", buffer);
-            fprintf(file, "%s\n", &buffer);
+        for (int i = 0; i < 10; i++) {
+            if (read(client_socket, &buffer, 1) == -1)
+                break;
+            if (i == 9) {
+                write(client_socket, "HDERR\n", 6);
+                exit(1);
+            }
+            if (buffer == '\n') {
+                username[i] = '\0';
+                break;
+            }
+            username[i] = buffer;
         }
+
+        for (int i = 0; i < 102; i++) {
+            if (read(client_socket, &buffer, 1) == -1)
+                break;
+            if (i == 101) {
+                write(client_socket, "HDERR\n", 6);
+                exit(1);
+            }
+            if (buffer == '\n') {
+                filename[i] = '\0';
+                break;
+            }
+            filename[i] = buffer;
+        }
+
+        for (int i = 0; i < 12; i++) {
+            if (read(client_socket, &buffer, 1) == -1)
+                break;
+            if (i == 11) {
+                write(client_socket, "HDERR\n", 6);
+                exit(1);
+            }
+            if (buffer == '\n') {
+                length[i] = '\0';
+                break;
+            }
+            length[i] = buffer;
+        }
+
+        int size = atoi(length);
+
+        printf("%s\n", username);
+        printf("%s\n", filename);
+        printf("%d\n", serial);
+        printf("%d\n", size);
+
+        // convert 
+        char s[20];
+        sprintf(s, "%d", serial);
+
+        // create new file name
+        char name[150];
+        strcpy(name, username);
+        strcat(name, "-");
+        strcat(name, s);
+        strcat(name, "-");
+        strcat(name, filename);
+
+        printf("%s\n", name);
+
+        FILE *file = fopen(name, "w");
+
+        char content[size];
+        read(client_socket, content, size);
+
+        fwrite(content, 1, size, file);
+
         fclose(file);
 
         printf("Client disconnected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
