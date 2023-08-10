@@ -20,6 +20,25 @@ void ignore_sigpipe(void)
   sigaction(SIGPIPE, &myaction, NULL);
 }
 
+void validate(char *storage, int len) {
+
+    char buffer = '';
+
+    for (int i = 0; i < len + 2; i++) {
+        if (read(cfd, &buffer, 1) == -1)
+            break;
+        if (i == len) {
+            write(cfd, "HDERR\n", 6);
+            exit(1);
+        }
+        if (buffer == '\n') {
+            storage[i] = '\0';
+            break;
+        }
+        storage[i] = buffer;
+    }
+    return;
+}
 
 // cmdline reminder: portnum, helper
 int main(int argc, char *argv[]) {
@@ -66,9 +85,9 @@ int main(int argc, char *argv[]) {
     socklen_t cfd_len = sizeof(cfd_a);
 
     // variables to store client information
-    char username[9];
-    char filename[101];
-    char length[11];
+    char username[10];
+    char filename[102];
+    char length[12];
 
     // accept client
     cfd = accept(sfd, (struct sockaddr *)&cfd_a, &cfd_len);
@@ -119,7 +138,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < 12; i++) {
                 if (read(cfd, &buffer, 1) == -1)
                     break;
-                if (i == 11) {
+                if (i == 11 || buffer != '\n' && buffer < 48 && buffer > 57) {
                     write(cfd, "HDERR\n", 6);
                     exit(1);
                 }
@@ -147,10 +166,14 @@ int main(int argc, char *argv[]) {
             FILE *file = fopen(name, "w");
 
             char content[size];
-            read(cfd, content, size);
+            int r_count = 0;
 
-            fwrite(content, 1, size, file);
+            for (int i = 0; i < size; i++) {
+                r_count += read(cfd, content + i, 1);
+            }
 
+            int w_count = fwrite(content, 1, size, file);
+            printf("%d %d %d\n", size, r_count, w_count);
             fclose(file);
 
             char message[12];
@@ -158,6 +181,12 @@ int main(int argc, char *argv[]) {
             strcat(message, "\n");
 
             write(cfd, message, strlen(message));
+
+            close(cfd);
+
+            // if (r_count < size || w_count < size) {
+            //     execlp("rm", "rm", name, (char*)NULL);
+            // }
             
             return 0;
         }
