@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
             strcat(name, s);
             strcat(name, "-");
             strcat(name, filename);
-            printf("%s", name);
+            
             FILE *file = fopen(name, "w");
 
             char content[size];
