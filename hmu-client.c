@@ -18,11 +18,11 @@ void sendInfo(int cfd, char *content) {
 
   for (int i = 0; i < length; i++) {
     if(write(cfd, (content + i), 1) == -1) {
-      printf("error\n");
+      perror("error\n");
     }
   }
   if (write(cfd, "\n", 1) == -1) {
-      printf("error\n");
+      perror("error\n");
   }
 }
 

@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
             strcat(name, s);
             strcat(name, "-");
             strcat(name, filename);
-
+            printf("%s", name);
             FILE *file = fopen(name, "w");
 
             char content[size];
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
 
             fclose(file);
 
-            char message[12];
+            char message[100];
             sprintf(message, "%d", serial);
             strcat(message, "\n");
 
@@ -206,6 +206,8 @@ int main(int argc, char *argv[]) {
                         message[i + 1] = '\0';
                         break;
                     }
+                    if (i == 11)
+                        message[11] = '\0';
                 }
             }
 
