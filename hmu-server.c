@@ -29,7 +29,7 @@ void checkU(char *storage, int len, int cfd) {
     for (int i = 0; i < len + 2; i++) {
         if (read(cfd, &b, 1) == -1)
             break;
-        if (i == len + 1 || isalnum(b) == 0 && b != '\n') {
+        if (i == len + 1 || isalnum(b) == 0 && b != '\n' || b == '\n' && i == 0) {
             write(cfd, "HDERR\n", 6);
             close(cfd);
             exit(1);
@@ -51,7 +51,7 @@ void checkF(char *storage, int len, int cfd) {
     for (int i = 0; i < len + 2; i++) {
         if (read(cfd, &b, 1) == -1)
             break;
-        if (i == len + 1 || b == 47) {
+        if (i == len + 1 || b == 47 || b == '\n' && i == 0) {
             write(cfd, "HDERR\n", 6);
             close(cfd);
             exit(1);
@@ -73,7 +73,7 @@ void checkN(char *storage, int len, int cfd) {
     for (int i = 0; i < len + 2; i++) {
         if (read(cfd, &b, 1) == -1)
             break;
-        if (i == len + 1 || b != '\n' && b < 48 && b > 57) {
+        if (i == len + 1 || b != '\n' && b < 48 && b > 57 || b == '\n' && i == 0) {
             write(cfd, "HDERR\n", 6);
             close(cfd);
             exit(1);
