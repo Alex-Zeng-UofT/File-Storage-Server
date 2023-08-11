@@ -10,8 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/wait.h>
+#include<ctype.h>
 
+// standard ignoring
 void ignore_sigpipe(void)
 {
   struct sigaction myaction;
@@ -20,22 +21,68 @@ void ignore_sigpipe(void)
   sigaction(SIGPIPE, &myaction, NULL);
 }
 
-void validate(char *storage, int len) {
+// check for valid username
+void checkU(char *storage, int len, int cfd) {
 
-    char buffer = '';
+    char b;
 
     for (int i = 0; i < len + 2; i++) {
-        if (read(cfd, &buffer, 1) == -1)
+        if (read(cfd, &b, 1) == -1)
             break;
-        if (i == len) {
+        if (i == len + 1 || isalnum(b) == 0 && b != '\n') {
             write(cfd, "HDERR\n", 6);
+            close(cfd);
             exit(1);
         }
-        if (buffer == '\n') {
+        if (b == '\n') {
             storage[i] = '\0';
             break;
         }
-        storage[i] = buffer;
+        storage[i] = b;
+    }
+    return;
+}
+
+// check for valid filename
+void checkF(char *storage, int len, int cfd) {
+
+    char b;
+
+    for (int i = 0; i < len + 2; i++) {
+        if (read(cfd, &b, 1) == -1)
+            break;
+        if (i == len + 1 || b == 47) {
+            write(cfd, "HDERR\n", 6);
+            close(cfd);
+            exit(1);
+        }
+        if (b == '\n') {
+            storage[i] = '\0';
+            break;
+        }
+        storage[i] = b;
+    }
+    return;
+}
+
+// check for valid size number
+void checkN(char *storage, int len, int cfd) {
+
+    char b;
+
+    for (int i = 0; i < len + 2; i++) {
+        if (read(cfd, &b, 1) == -1)
+            break;
+        if (i == len + 1 || b != '\n' && b < 48 && b > 57) {
+            write(cfd, "HDERR\n", 6);
+            close(cfd);
+            exit(1);
+        }
+        if (b == '\n') {
+            storage[i] = '\0';
+            break;
+        }
+        storage[i] = b;
     }
     return;
 }
@@ -51,6 +98,7 @@ int main(int argc, char *argv[]) {
   }
 
   ignore_sigpipe();
+  signal(SIGCHLD, SIG_IGN);
 
   int sfd;
   struct sockaddr_in sfd_a;
@@ -85,9 +133,9 @@ int main(int argc, char *argv[]) {
     socklen_t cfd_len = sizeof(cfd_a);
 
     // variables to store client information
-    char username[10];
-    char filename[102];
-    char length[12];
+    char username[9];
+    char filename[101];
+    char length[11];
 
     // accept client
     cfd = accept(sfd, (struct sockaddr *)&cfd_a, &cfd_len);
@@ -102,52 +150,18 @@ int main(int argc, char *argv[]) {
 
         if (p == 0) {
 
-            char buffer;
+            close(sfd);
 
+            char buffer;
+            
             // username
-            for (int i = 0; i < 10; i++) {
-                if (read(cfd, &buffer, 1) == -1)
-                    break;
-                if (i == 9) {
-                    write(cfd, "HDERR\n", 6);
-                    exit(1);
-                }
-                if (buffer == '\n') {
-                    username[i] = '\0';
-                    break;
-                }
-                username[i] = buffer;
-            }
+            checkU(username, 8, cfd);
 
             // filename
-            for (int i = 0; i < 102; i++) {
-                if (read(cfd, &buffer, 1) == -1)
-                    break;
-                if (i == 101) {
-                    write(cfd, "HDERR\n", 6);
-                    exit(1);
-                }
-                if (buffer == '\n') {
-                    filename[i] = '\0';
-                    break;
-                }
-                filename[i] = buffer;
-            }
+            checkF(filename, 100, cfd);
 
             // length of file
-            for (int i = 0; i < 12; i++) {
-                if (read(cfd, &buffer, 1) == -1)
-                    break;
-                if (i == 11 || buffer != '\n' && buffer < 48 && buffer > 57) {
-                    write(cfd, "HDERR\n", 6);
-                    exit(1);
-                }
-                if (buffer == '\n') {
-                    length[i] = '\0';
-                    break;
-                }
-                length[i] = buffer;
-            }
+            checkN(length, 10, cfd);
 
             int size = atoi(length);
 
@@ -167,34 +181,40 @@ int main(int argc, char *argv[]) {
 
             char content[size];
             int r_count = 0;
+            int w_count = 0;
 
+            // transfer content to server file
             for (int i = 0; i < size; i++) {
-                r_count += read(cfd, content + i, 1);
+                if(read(cfd, content + i, 1) <= 0) break;
+                r_count++;
+                w_count += fwrite(content + i, 1, 1, file);
             }
 
-            int w_count = fwrite(content, 1, size, file);
-            printf("%d %d %d\n", size, r_count, w_count);
             fclose(file);
 
             char message[12];
             sprintf(message, "%d", serial);
             strcat(message, "\n");
 
-            write(cfd, message, strlen(message));
+            // delete file if less that promised bytes
+            if (r_count < size || w_count < size) {
+                execlp("rm", "rm", name, (char*)NULL);
+            } else { // send message one byte at a time
+                    for (int i = 0; i < 12; i++) {
+                    write(cfd, message + i, 1);
+                    if (message[i] == '\n') {
+                        message[i + 1] = '\0';
+                        break;
+                    }
+                }
+            }
 
             close(cfd);
-
-            // if (r_count < size || w_count < size) {
-            //     execlp("rm", "rm", name, (char*)NULL);
-            // }
             
             return 0;
         }
+        close(cfd);
     }
-  }
-
-  while (wait(NULL) > 0) {
-
   }
 
   close(sfd);

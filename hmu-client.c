@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+// send info to server one byte at a time
 void sendInfo(int cfd, char *content) {
 
   int length = strlen(content);
@@ -25,20 +26,23 @@ void sendInfo(int cfd, char *content) {
   }
 }
 
+// check if a str is all numeric
 int check_valid(char *str) {
 
   int length = strlen(str);
+  int newline = 0;
 
   for (int i = 0; i < length; i++) {
     if (str[i] == '\n') {
+      newline = 1;
       break;
     }
-    if (str[i] < 48 && str[i] > 57) {
+    if (i == 10 ||str[i] < 48 || str[i] > 57 ) {
       return 0;
     }
   }
 
-  return 1;
+  return newline == 1 ? 1 : 0;
 }
 
 // cmdline reminder: IP-address, portnum, username, filename
@@ -114,19 +118,26 @@ int main(int argc, char *argv[]) {
   fclose(file);
 
   // load message from server
-  char message[11];
+  char message[12];
   for (int i = 0; i < 11; i++) {
-    read(cfd, message + i, 1);
-  }
+    if (read(cfd, message + i, 1) <= 0) break;
   
-  // print output
-  if (strncmp("HDERR", message, 5) == 0 || check_valid(message)) {
-    printf("Message from server: %s\n", message);
-  } else { // if message is not valid
-    fprintf(stderr, "invalid format\n");
+    if (message[i] == '\n') {
+      message[i + 1] = '\0';
+      break;
+    }
   }
 
   close(cfd);
+  
+  // print output
+  if (strncmp("HDERR", message, 5) == 0 || check_valid(message)) {
+    printf("%s\n", message);
+  } 
+  else { // if message is not valid
+    fprintf(stderr, "invalid format\n");
+    exit(10);
+  }
 
   return 0;
 }
