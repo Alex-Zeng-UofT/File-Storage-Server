@@ -132,6 +132,8 @@ int main(int argc, char *argv[]) {
   
   // print output
   if (strncmp("HDERR", message, 5) == 0 || check_valid(message)) {
+    int len = strlen(message);
+    message[len - 1] = '\0';
     printf("%s\n", message);
   } 
   else { // if message is not valid
